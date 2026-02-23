@@ -7,6 +7,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Button } from '../../components/ui/Button'
 import { Card, CardHeader } from '../../components/ui/Card'
 import { usePatientForm } from '../../hooks/usePatientForm'
+import { useSocket } from '../../components/providers/SocketProvider'
 import { PatientFormData } from '../../lib/types'
 
 const formSections = [
@@ -46,6 +47,7 @@ const formSections = [
 
 export default function PatientForm() {
   const { patientId, status, formData, errors, handleInputChange, handleSubmit, setStatus } = usePatientForm()
+  const { socket, emit } = useSocket()
 
   // Track inactivity
   useEffect(() => {
@@ -54,9 +56,15 @@ export default function PatientForm() {
     const resetTimer = () => {
       clearTimeout(inactivityTimer)
       setStatus('filling')
+      if (socket?.connected) {
+        emit('patient:status_change', { patientId, status: 'filling' })
+      }
       
       inactivityTimer = setTimeout(() => {
         setStatus('inactive')
+        if (socket?.connected) {
+          emit('patient:status_change', { patientId, status: 'inactive' })
+        }
       }, 3000)
     }
 
@@ -73,7 +81,7 @@ export default function PatientForm() {
       window.removeEventListener('mousemove', handleActivity)
       window.removeEventListener('keypress', handleActivity)
     }
-  }, [setStatus])
+  }, [setStatus, socket, emit, patientId])
 
   return (
     <div className="min-h-screen bg-cover bg-center bg-no-repeat py-4" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
