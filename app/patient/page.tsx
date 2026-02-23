@@ -113,11 +113,11 @@ export default function PatientForm() {
                           label={field.label}
                           field={field.name}
                           type={field.type as any}
-                          options={field.options}
+                          options={'options' in field ? field.options : undefined}
                           value={formData[field.name] || ''}
                           onChange={(value) => handleInputChange(field.name, value)}
                           error={errors[field.name]}
-                          required={field.required !== false}
+                          required={'required' in field ? field.required !== false : true}
                         />
                       ))}
                     </div>
@@ -133,7 +133,7 @@ export default function PatientForm() {
                             value={formData[field.name] || ''}
                             onChange={(value) => handleInputChange(field.name, value)}
                             error={errors[field.name]}
-                            required={field.required !== false}
+                            required={'required' in field ? field.required !== false : true}
                           />
                         ))}
                       </div>
@@ -144,7 +144,7 @@ export default function PatientForm() {
                         value={formData[section.fields[2].name] || ''}
                         onChange={(value) => handleInputChange(section.fields[2].name, value)}
                         error={errors[section.fields[2].name]}
-                        required={section.fields[2].required !== false}
+                        required={'required' in section.fields[2] ? section.fields[2].required !== false : true}
                       />
                     </>
                   ) : (
@@ -158,7 +158,7 @@ export default function PatientForm() {
                           value={formData[field.name] || ''}
                           onChange={(value) => handleInputChange(field.name, value)}
                           error={errors[field.name]}
-                          required={field.required !== false}
+                          required={'required' in field ? field.required !== false : true}
                         />
                       ))}
                     </div>
