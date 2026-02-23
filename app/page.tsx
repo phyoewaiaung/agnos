@@ -7,9 +7,12 @@ export default function Home() {
     <div className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center px-4" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
       <main className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12">
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Agnos Health Assignment
-          </h1>
+          <div className="flex items-center justify-center mb-4">
+            <img src="/agnos-fav.ico" alt="Agnos" className="w-10 h-10 mr-3" />
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+              Agnos Health Assignment
+            </h1>
+          </div>
           <p className="text-xl text-gray-600 mb-2">
             Real-Time Patient Input Form & Staff View System
           </p>
@@ -113,7 +116,7 @@ export default function Home() {
 
         <div className="mt-8 text-center text-sm text-gray-600">
           <p>Built with Next.js, Socket.IO, and TailwindCSS</p>
-          <p className="mt-1"> 2024 Agnos Health Assignment</p>
+          <p className="mt-1"> 2026 Agnos Health Assignment</p>
         </div>
       </main>
     </div>

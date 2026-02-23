@@ -1,429 +1,203 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useSocket } from '../../components/providers/SocketProvider'
-import { Patient, PatientFormData, PatientStatus, RealtimeUpdate, StatusUpdate } from '../../lib/types'
+import { StatusBadge } from '../../components/ui/StatusBadge'
+import { Card, CardHeader } from '../../components/ui/Card'
+import { useStaffDashboard } from '../../hooks/useStaffDashboard'
+import Link from 'next/link'
+import { formatDate } from '../../utils/helpers'
 
-const StaffDashboard = () => {
-  const { socket, isConnected, emit, on, off } = useSocket()
-  const [patients, setPatients] = useState<Record<string, Patient>>({})
-  const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
+export default function StaffDashboard() {
+  const { patients, selectedPatient, setSelectedPatient, isConnected } = useStaffDashboard()
 
-  // Join staff room on component mount
-  useEffect(() => {
-    if (isConnected && socket) {
-      emit('staff:join', null)
-      
-      // Listen for real-time updates
-      const handleFieldUpdate = (data: RealtimeUpdate) => {
-        setPatients(prev => ({
-          ...prev,
-          [data.patientId]: {
-            ...prev[data.patientId],
-            id: data.patientId,
-            formData: {
-              ...prev[data.patientId]?.formData,
-              [data.field]: data.value
-            },
-            lastActivity: data.timestamp
-          }
-        }))
-      }
-
-      const handleStatusUpdate = (data: StatusUpdate) => {
-        setPatients(prev => ({
-          ...prev,
-          [data.patientId]: {
-            ...prev[data.patientId],
-            id: data.patientId,
-            status: data.status,
-            lastActivity: data.timestamp
-          }
-        }))
-      }
-
-      const handlePatientJoined = (data: { patientId: string, timestamp: string }) => {
-        setPatients(prev => ({
-          ...prev,
-          [data.patientId]: {
-            id: data.patientId,
-            status: 'filling',
-            formData: {},
-            lastActivity: data.timestamp,
-            joinedAt: data.timestamp
-          }
-        }))
-      }
-
-      const handleFormSubmitted = (data: { patientId: string, formData: PatientFormData, timestamp: string }) => {
-        setPatients(prev => ({
-          ...prev,
-          [data.patientId]: {
-            ...prev[data.patientId],
-            id: data.patientId,
-            status: 'submitted',
-            formData: data.formData,
-            lastActivity: data.timestamp
-          }
-        }))
-      }
-
-      const handlePatientLeft = (data: { patientId: string, timestamp: string }) => {
-        setPatients(prev => {
-          const updated = { ...prev }
-          if (updated[data.patientId]) {
-            updated[data.patientId] = {
-              ...updated[data.patientId],
-              status: 'inactive',
-              lastActivity: data.timestamp
-            }
-          }
-          return updated
-        })
-      }
-
-      // Register event listeners
-      on('staff:field_updated', handleFieldUpdate)
-      on('staff:status_updated', handleStatusUpdate)
-      on('staff:patient_joined', handlePatientJoined)
-      on('staff:form_submitted', handleFormSubmitted)
-      on('staff:patient_left', handlePatientLeft)
-
-      // Cleanup
-      return () => {
-        off('staff:field_updated', handleFieldUpdate)
-        off('staff:status_updated', handleStatusUpdate)
-        off('staff:patient_joined', handlePatientJoined)
-        off('staff:form_submitted', handleFormSubmitted)
-        off('staff:patient_left', handlePatientLeft)
-      }
-    }
-  }, [isConnected, on, off]) // Remove socket and emit from dependencies
-
-  const getStatusColor = (status: PatientStatus) => {
-    switch (status) {
-      case 'filling':
-        return 'bg-green-100 text-green-800'
-      case 'inactive':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'submitted':
-        return 'bg-blue-100 text-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getStatusText = (status: PatientStatus) => {
-    switch (status) {
-      case 'filling':
-        return 'Actively Filling'
-      case 'inactive':
-        return 'Inactive'
-      case 'submitted':
-        return 'Submitted'
-      default:
-        return 'Unknown'
-    }
-  }
-
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString()
-  }
-
-  const PatientCard = ({ patient }: { patient: Patient }) => (
-    <div 
-      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-        selectedPatient === patient.id 
-          ? 'border-blue-500 bg-blue-50' 
-          : 'border-gray-200 hover:border-gray-300'
-      }`}
-      onClick={() => setSelectedPatient(patient.id)}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h3 className="font-semibold text-gray-900">
-            {patient.formData?.firstName || patient.formData?.lastName ? 
-              `${patient.formData?.firstName || ''} ${patient.formData?.lastName || ''}` : 
-              'No name yet'
-            }
-          </h3>
-          <p className="text-sm text-gray-600">
-            <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{patient.id}</span>
-          </p>
-        </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(patient.status)}`}>
-          {getStatusText(patient.status)}
-        </span>
-      </div>
-      
-      <div className="text-sm text-gray-500">
-        Last activity: {formatTimestamp(patient.lastActivity)}
-      </div>
-
-      {patient.formData?.email && (
-        <div className="text-sm text-gray-600 mt-1">
-          Email: {patient.formData.email}
-        </div>
-      )}
-    </div>
-  )
-
-  const PatientDetailView = ({ patient }: { patient: Patient }) => {
-    const fieldLabels: Record<keyof PatientFormData, string> = {
-      firstName: 'First Name',
-      lastName: 'Last Name',
-      middleName: 'Middle Name',
-      dateOfBirth: 'Date of Birth',
-      gender: 'Gender',
-      phoneNumber: 'Phone Number',
-      email: 'Email',
-      address: 'Address',
-      preferredLanguage: 'Preferred Language',
-      nationality: 'Nationality',
-      emergencyContactName: 'Emergency Contact Name',
-      emergencyContactPhone: 'Emergency Contact Phone',
-      religion: 'Religion'
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900">
-            Patient Details - {patient.formData?.firstName || 'N/A'} {patient.formData?.lastName || 'N/A'}
-          </h2>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(patient.status)}`}>
-            {getStatusText(patient.status)}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Personal Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personal Information</h3>
-            <div className="space-y-3">
-              <div>
-                <span className="font-medium text-gray-700">First Name:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.firstName || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Last Name:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.lastName || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Date of Birth:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.dateOfBirth || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Gender:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.gender || '-'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
-            <div className="space-y-3">
-              <div>
-                <span className="font-medium text-gray-700">Phone Number:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.phoneNumber || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Email:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.email || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Address:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.address || '-'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Additional Information</h3>
-            <div className="space-y-3">
-              <div>
-                <span className="font-medium text-gray-700">Preferred Language:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.preferredLanguage || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Nationality:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.nationality || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Religion:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.religion || '-'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Emergency Contact */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Emergency Contact</h3>
-            <div className="space-y-3">
-              <div>
-                <span className="font-medium text-gray-700">Contact Name:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.emergencyContactName || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Contact Phone:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.emergencyContactPhone || '-'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-600">
-            <div>Patient ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{patient.id}</span></div>
-            <div>Joined: {formatTimestamp(patient.joinedAt || patient.lastActivity)}</div>
-            <div>Last Activity: {formatTimestamp(patient.lastActivity)}</div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const selectedPatientData = patients.find(p => p.id === selectedPatient)
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-no-repeat py-8" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat py-4" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
       <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Staff Dashboard</h1>
-          <p className="text-lg text-gray-600 mb-6">Monitor patient form progress in real-time</p>
+        <div className="mb-4">
+          <Link 
+            href="/"
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            <img src="/agnos-fav.ico" alt="Agnos" className="w-5 h-5 mr-2" />
+            Back to Home
+          </Link>
+        </div>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Staff Dashboard</h1>
+          <p className="text-base text-slate-600 mb-4">Monitor patient forms in real-time</p>
           
-          <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-            isConnected ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
-            <span className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-            {isConnected ? 'Live Connected' : 'Disconnected'}
+          <div className="flex items-center justify-center">
+            <StatusBadge status={isConnected ? 'connected' : 'disconnected'} label={isConnected ? 'Live Connected' : 'Disconnected'} />
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Patient List */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-6">
-                <h2 className="text-2xl font-semibold mb-2">Active Patients</h2>
-                <p className="text-green-100">Patients currently filling forms</p>
-              </div>
+            <Card padding="sm">
+              <CardHeader title="Active Patients" subtitle={`Total: ${patients.length}`} />
               
-              <div className="p-6">
-                {Object.values(patients).length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-2xl">👥</span>
-                    </div>
-                    <p className="text-gray-500">No active patients</p>
-                    <p className="text-sm text-gray-400 mt-1">Waiting for patients to join...</p>
-                  </div>
+              <div className="p-4 pt-6">
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                {patients.length === 0 ? (
+                  <p className="text-slate-500 text-center py-4">No active patients</p>
                 ) : (
-                  <div className="space-y-4">
-                    {Object.values(patients).map(patient => (
-                      <PatientCard key={patient.id} patient={patient} />
-                    ))}
-                  </div>
+                  patients.map((patient) => (
+                    <div
+                      key={patient.id}
+                      onClick={() => setSelectedPatient(patient.id)}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedPatient === patient.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-xs font-semibold">{patient.id}</span>
+                        <StatusBadge status={patient.status} />
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        {patient.formData.firstName || 'Unknown'} {patient.formData.lastName || ''}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        Last active: {formatDate(patient.lastActivity)}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
-            </div>
+              </div>
+            </Card>
           </div>
 
           {/* Patient Details */}
           <div className="lg:col-span-2">
-            {selectedPatient ? (
-              (() => {
-                const patient = patients[selectedPatient]
-                return patient ? (
-                  <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h2 className="text-2xl font-semibold mb-2">Patient Details - {patient.formData?.firstName || 'N/A'} {patient.formData?.lastName || 'N/A'}</h2>
-                          <p className="text-blue-100">Real-time form information</p>
-                        </div>
-                        <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                          patient.status === 'filling' ? 'bg-green-100 text-green-800' :
-                          patient.status === 'inactive' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
-                        </span>
+            {selectedPatientData ? (
+              <Card>
+                <CardHeader 
+                  title={`Patient ${selectedPatientData.id}`}
+                  subtitle={`Status: ${selectedPatientData.status}`}
+                />
+                
+                <div className="p-4 space-y-6">
+                  {/* Personal Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Personal Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">First Name</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.firstName || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Last Name</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.lastName || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Date of Birth</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.dateOfBirth || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Gender</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.gender || 'Not provided'}</p>
                       </div>
                     </div>
-                    
-                    <div className="p-8">
-                      <PatientDetailView patient={patient} />
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Contact Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Phone Number</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.phoneNumber || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Email</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.email || 'Not provided'}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-semibold text-slate-600">Address</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.address || 'Not provided'}</p>
+                      </div>
                     </div>
                   </div>
-                ) : null
-              })()
-            ) : (
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-gray-400 to-gray-500 text-white p-6">
-                  <h2 className="text-2xl font-semibold mb-2">Select a Patient</h2>
-                  <p className="text-gray-200">Choose a patient from the list to view details</p>
-                </div>
-                
-                <div className="p-12 text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <span className="text-4xl">📋</span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No Patient Selected</h3>
-                  <p className="text-gray-500">Select a patient from the Active Patients list to view their form details in real-time.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Stats Footer */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <span className="text-xl">👥</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Patients</p>
-                <p className="text-2xl font-bold text-gray-900">{Object.values(patients).length}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <span className="text-xl">✏️</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Currently Filling</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {Object.values(patients).filter(p => p.status === 'filling').length}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                <span className="text-xl">✅</span>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Submitted Forms</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {Object.values(patients).filter(p => p.status === 'submitted').length}
-                </p>
-              </div>
-            </div>
+                  {/* Additional Information */}
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Additional Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Preferred Language</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.preferredLanguage || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Nationality</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.nationality || 'Not provided'}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-semibold text-slate-600">Religion</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.religion || 'Not provided'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Emergency Contact */}
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Emergency Contact</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Contact Name</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.emergencyContactName || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Contact Phone</label>
+                        <p className="text-sm text-slate-900">{selectedPatientData.formData.emergencyContactPhone || 'Not provided'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Activity Timeline */}
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Activity Timeline</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                        <span className="text-slate-600">Joined:</span>
+                        <span className="ml-2 text-slate-900">{formatDate(selectedPatientData.lastActivity)}</span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        <span className="text-slate-600">Last Activity:</span>
+                        <span className="ml-2 text-slate-900">{formatDate(selectedPatientData.lastActivity)}</span>
+                      </div>
+                      {selectedPatientData.status === 'submitted' && (
+                        <div className="flex items-center text-sm">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                          <span className="text-slate-600">Form Submitted:</span>
+                          <span className="ml-2 text-slate-900">{formatDate(selectedPatientData.lastActivity)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card>
+                <div className="text-center py-12">
+                  <div className="text-gray-400 mb-4">
+                    <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">Select a Patient</h3>
+                  <p className="text-slate-500">Choose a patient from the list to view their details</p>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>
     </div>
   )
-}
-
-export default function StaffPage() {
-  return <StaffDashboard />
 }

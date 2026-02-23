@@ -53,3 +53,20 @@ export interface StatusUpdate {
   status: PatientStatus
   timestamp: string
 }
+
+export interface FormFieldProps {
+  label: string
+  field: keyof PatientFormData
+  type?: 'text' | 'email' | 'tel' | 'date' | 'select'
+  required?: boolean
+  options?: string[]
+  value: string
+  onChange: (value: string) => void
+  error?: string
+}
+
+export interface PatientCardProps {
+  patient: Patient
+  onSelect: (patientId: string) => void
+  isSelected: boolean
+}
