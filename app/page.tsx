@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center px-4" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
       <main className="max-w-4xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12">
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">

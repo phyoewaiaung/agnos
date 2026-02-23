@@ -142,9 +142,14 @@ const StaffDashboard = () => {
       <div className="flex justify-between items-start mb-2">
         <div>
           <h3 className="font-semibold text-gray-900">
-            {patient.formData?.firstName || 'Unknown'} {patient.formData?.lastName || ''}
+            {patient.formData?.firstName || patient.formData?.lastName ? 
+              `${patient.formData?.firstName || ''} ${patient.formData?.lastName || ''}` : 
+              'No name yet'
+            }
           </h3>
-          <p className="text-sm text-gray-600">ID: {patient.id}</p>
+          <p className="text-sm text-gray-600">
+            <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{patient.id}</span>
+          </p>
         </div>
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(patient.status)}`}>
           {getStatusText(patient.status)}
@@ -184,7 +189,7 @@ const StaffDashboard = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">
-            Patient Details - {patient.formData?.firstName || 'Unknown'} {patient.formData?.lastName || 'Unknown'}
+            Patient Details - {patient.formData?.firstName || 'N/A'} {patient.formData?.lastName || 'N/A'}
           </h2>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(patient.status)}`}>
             {getStatusText(patient.status)}
@@ -199,10 +204,6 @@ const StaffDashboard = () => {
               <div>
                 <span className="font-medium text-gray-700">First Name:</span>
                 <span className="ml-2 text-gray-900">{patient.formData?.firstName || '-'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Middle Name:</span>
-                <span className="ml-2 text-gray-900">{patient.formData?.middleName || '-'}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Last Name:</span>
@@ -275,7 +276,7 @@ const StaffDashboard = () => {
 
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <div className="text-sm text-gray-600">
-            <div>Patient ID: {patient.id}</div>
+            <div>Patient ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{patient.id}</span></div>
             <div>Joined: {formatTimestamp(patient.joinedAt || patient.lastActivity)}</div>
             <div>Last Activity: {formatTimestamp(patient.lastActivity)}</div>
           </div>
@@ -285,7 +286,7 @@ const StaffDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-8">
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat py-8" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Staff Dashboard</h1>
@@ -338,7 +339,7 @@ const StaffDashboard = () => {
                     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
                       <div className="flex justify-between items-center">
                         <div>
-                          <h2 className="text-2xl font-semibold mb-2">Patient Details</h2>
+                          <h2 className="text-2xl font-semibold mb-2">Patient Details - {patient.formData?.firstName || 'N/A'} {patient.formData?.lastName || 'N/A'}</h2>
                           <p className="text-blue-100">Real-time form information</p>
                         </div>
                         <span className={`px-4 py-2 rounded-full text-sm font-medium ${

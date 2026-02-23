@@ -69,7 +69,11 @@ const FormField = ({ label, field, type = 'text', required = true, options, valu
 
 const PatientForm = () => {
   const { socket, isConnected, emit, on } = useSocket()
-  const [patientId] = useState(() => `patient_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+  const [patientId] = useState(() => {
+    const timestamp = Date.now().toString(36).toUpperCase()
+    const random = Math.random().toString(36).substr(2, 4).toUpperCase()
+    return `P-${timestamp}-${random}`
+  })
   const [status, setStatus] = useState<PatientStatus>('filling')
   const [formData, setFormData] = useState<Partial<PatientFormData>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -240,7 +244,7 @@ const PatientForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-8">
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat py-8" style={{ backgroundImage: 'url(/common-page-background.webp)' }}>
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Patient Information Form</h1>
@@ -419,7 +423,7 @@ const PatientForm = () => {
 
         <div className="mt-8 text-center text-sm text-gray-600">
           <p>Your information is being transmitted in real-time to our staff</p>
-          <p className="mt-1">Patient ID: {patientId}</p>
+          <p className="mt-1">Patient ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs font-semibold">{patientId}</span></p>
         </div>
       </div>
     </div>
